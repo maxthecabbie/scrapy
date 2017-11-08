@@ -1,4 +1,4 @@
-package hello;
+package scrapy;
 
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertThat;
