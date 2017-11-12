@@ -7,7 +7,8 @@ import java.util.ArrayList;
 import java.lang.String;
 import java.net.URL;
 import java.net.MalformedURLException;
-import java.io.IOException;
+import java.util.HashMap;
+import java.util.concurrent.*;
 
 public class YelpRequestController {
     private String yelpURL;
@@ -47,13 +48,28 @@ public class YelpRequestController {
 
     public ArrayList<String> makeYelpRequest() {
         String formattedURL = formatURL(yelpURL);
+        ExecutorService executor = Executors.newFixedThreadPool(10);
+        ArrayList<Future<HashMap>> threadList = new ArrayList<>();
+        Callable<HashMap> callable = new YelpImageScraper(formattedURL);
+        ArrayList<String> imgLinksResult = new ArrayList<>();
+
+        for (int i = 0; i < 2; i++) {
+            Future<HashMap> yelpReqFuture = executor.submit(callable);
+            threadList.add(yelpReqFuture);
+        }
+        for (Future<HashMap> future : threadList) {
+            try {
+                HashMap<String, ArrayList<String>> futureResult = future.get();
+                imgLinksResult.addAll(futureResult.get("yelpImgLinks"));
+            } catch (InterruptedException | ExecutionException e) {
+            }
+        }
         try {
-            Document doc = Jsoup.connect(formattedURL).get();
-            YelpImageScraper scraper = new YelpImageScraper(doc);
-            return scraper.scrapeYelpImgLinks();
+            executor.shutdown();
+            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
         }
-        catch(IOException e) {
-            return null;
-        }
+
+        return imgLinksResult;
     }
 }
