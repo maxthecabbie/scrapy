@@ -5,9 +5,11 @@ import scrapy.yelpscraper.YelpRequestController;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonElement;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -19,6 +21,7 @@ public class RequestController {
     public ArrayList<String> index(@RequestBody String reqBodyString) {
         HashMap<String, String> requestBody = parseReqBodyString(reqBodyString);
         String yelpURL = requestBody.get("yelpURL");
+
         YelpRequestController yelpRequest = new YelpRequestController(yelpURL);
         ArrayList<String> yelpImageLinks = yelpRequest.makeYelpRequest();
         return yelpImageLinks;

@@ -6,12 +6,14 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
+import java.util.concurrent.Callable;
+
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.concurrent.Callable;
 
 public class YelpScraper implements Callable<YelpRequestResult> {
     private String yelpURL;
+    private boolean initialRequest;
     private static final String IMG_SRC_SELECTOR = "div.media-landing_gallery ul li img[src]";
     private static final String ROOT_NAVBAR_SELECTOR = "div.media-header_root-navbar";
     private static final String TAB_LINK_SELECTOR = "a.tab-link.js-tab-link";
@@ -19,27 +21,43 @@ public class YelpScraper implements Callable<YelpRequestResult> {
 
     public YelpScraper(String yelpURL) {
         this.yelpURL = yelpURL;
+        this.initialRequest = false;
     }
 
-    private YelpRequestResult scrapeYelp() {
+    public YelpScraper(String yelpURL, boolean initialRequest) {
+        this.yelpURL = yelpURL;
+        this.initialRequest = initialRequest;
+    }
+
+    public YelpRequestResult scrapeYelp() {
         try {
             YelpRequestResult requestResult = new YelpRequestResult();
             Document doc = Jsoup.connect(yelpURL).get();
-            HashMap<String, Integer> imageGalleryData = getImagesData(doc);
-            Elements imgSrcAttributes = doc.select(IMG_SRC_SELECTOR);
-            ArrayList<String> imgLinks = new ArrayList<>();
-            for (Element src : imgSrcAttributes) {
-                imgLinks.add(src.attr("abs:src"));
+
+            if (initialRequest) {
+                HashMap<String, Integer> imageGalleryData = getImageGalleryData(doc);
+                requestResult.setImageGalleryData(imageGalleryData);
             }
+
+            ArrayList<String> imgLinks = getImgLinks(doc);
             requestResult.setImgLinks(imgLinks);
-            requestResult.setImageGalleryData(imageGalleryData);
+
             return requestResult;
         } catch (IOException e) {
             return null;
         }
     }
 
-    private HashMap<String, Integer> getImagesData(Document doc) {
+    private ArrayList<String> getImgLinks(Document doc) {
+        Elements imgSrcAttributes = doc.select(IMG_SRC_SELECTOR);
+        ArrayList<String> imgLinks = new ArrayList<>();
+        for (Element src : imgSrcAttributes) {
+            imgLinks.add(src.attr("abs:src"));
+        }
+        return imgLinks;
+    }
+
+    private HashMap<String, Integer> getImageGalleryData(Document doc) {
         HashMap<String, Integer> imagesDataResult = new HashMap<>();
         int numAllImages = 0;
         int numFoodImages = 0;
@@ -56,6 +74,7 @@ public class YelpScraper implements Callable<YelpRequestResult> {
                 numFoodImages = Integer.parseInt(foodTitleAttr.replaceAll("[()]", ""));
             }
         }
+
         imagesDataResult.put("numAllImages", numAllImages);
         imagesDataResult.put("numFoodImages", numFoodImages);
         return imagesDataResult;
