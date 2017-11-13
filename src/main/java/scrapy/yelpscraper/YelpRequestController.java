@@ -1,8 +1,5 @@
 package scrapy.yelpscraper;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-
 import java.util.ArrayList;
 import java.lang.String;
 import java.net.URL;
@@ -49,18 +46,19 @@ public class YelpRequestController {
     public ArrayList<String> makeYelpRequest() {
         String formattedURL = formatURL(yelpURL);
         ExecutorService executor = Executors.newFixedThreadPool(10);
-        ArrayList<Future<HashMap>> threadList = new ArrayList<>();
-        Callable<HashMap> callable = new YelpImageScraper(formattedURL);
-        ArrayList<String> imgLinksResult = new ArrayList<>();
-
+        ArrayList<Future<YelpRequestResult>> threadList = new ArrayList<>();
+        Callable<YelpRequestResult> callable = new YelpScraper(formattedURL);
+        YelpRequestResult requestResult = new YelpRequestResult();
+        ArrayList<String> yelpImgLinks = new ArrayList<>();
         for (int i = 0; i < 2; i++) {
-            Future<HashMap> yelpReqFuture = executor.submit(callable);
+            Future<YelpRequestResult> yelpReqFuture = executor.submit(callable);
             threadList.add(yelpReqFuture);
         }
-        for (Future<HashMap> future : threadList) {
+        for (Future<YelpRequestResult> future : threadList) {
             try {
-                HashMap<String, ArrayList<String>> futureResult = future.get();
-                imgLinksResult.addAll(futureResult.get("yelpImgLinks"));
+                YelpRequestResult futureResult = future.get();
+                ArrayList<String> imgLinksResultList = futureResult.getImgLinks();
+                yelpImgLinks.addAll(imgLinksResultList);
             } catch (InterruptedException | ExecutionException e) {
             }
         }
@@ -70,6 +68,6 @@ public class YelpRequestController {
         } catch (InterruptedException e) {
         }
 
-        return imgLinksResult;
+        return yelpImgLinks;
     }
 }
