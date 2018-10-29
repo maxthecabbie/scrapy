@@ -65,12 +65,12 @@ public class YelpScraper implements Callable<YelpRequestResult> {
         Elements tabItems = rootNavbar.select(TAB_LINK_SELECTOR);
 
         for (Element tabItem : tabItems) {
-            if (tabItem.select("span[title=All]").size() > 0) {
-                String allTitleAttr = tabItem.select(TAB_LINK_COUNT_SELECTOR).attr("title");
+            if (tabItem.select("span:contains(All)").size() > 0) {
+                String allTitleAttr = tabItem.select(TAB_LINK_COUNT_SELECTOR).text();
                 numAllImages = Integer.parseInt(allTitleAttr.replaceAll("[()]", ""));
             }
-            else if (tabItem.select("span[title=Food]").size() > 0) {
-                String foodTitleAttr = tabItem.select(TAB_LINK_COUNT_SELECTOR).attr("title");
+            else if (tabItem.select("span:contains(Food)").size() > 0) {
+                String foodTitleAttr = tabItem.select(TAB_LINK_COUNT_SELECTOR).text();
                 numFoodImages = Integer.parseInt(foodTitleAttr.replaceAll("[()]", ""));
             }
         }

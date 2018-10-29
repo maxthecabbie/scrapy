@@ -1,5 +1,7 @@
 package scrapy.yelpscraper;
 
+import scrapy.Utils.RequestBodyData;
+
 import java.net.URL;
 import java.net.MalformedURLException;
 import java.util.concurrent.Callable;
@@ -15,10 +17,12 @@ import java.lang.String;
 
 public class YelpRequestController {
     private String yelpURL;
+    private Integer picLimit;
     private static final int NUM_IMAGES_IN_GALLERY = 30;
 
-    public YelpRequestController(String yelpURL) {
-        this.yelpURL = yelpURL;
+    public YelpRequestController(RequestBodyData reqData) {
+        this.yelpURL = reqData.getUrl();
+        this.picLimit = reqData.getPicLimit();
     }
 
     private String formatURL(String url) {
@@ -53,7 +57,7 @@ public class YelpRequestController {
     private int calculateNumRequests(HashMap<String, Integer> imageGalleryData) {
         int numAllImages = imageGalleryData.get("numAllImages");
         int numFoodImages = imageGalleryData.get("numFoodImages");
-        int numRemainingImages = numFoodImages - 30;
+        int numRemainingImages = Math.min(numFoodImages - NUM_IMAGES_IN_GALLERY, picLimit - NUM_IMAGES_IN_GALLERY);
         if (numAllImages <= 0 || numFoodImages <= 0 || numRemainingImages <= 0) {
             return 0;
         }
