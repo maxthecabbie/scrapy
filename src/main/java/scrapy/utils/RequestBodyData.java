@@ -1,4 +1,4 @@
-package scrapy.Utils;
+package scrapy.utils;
 
 public class RequestBodyData {
     private String url;

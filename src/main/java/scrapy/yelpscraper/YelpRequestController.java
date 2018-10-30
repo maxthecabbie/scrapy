@@ -1,6 +1,6 @@
 package scrapy.yelpscraper;
 
-import scrapy.Utils.RequestBodyData;
+import scrapy.utils.RequestBodyData;
 
 import java.net.URL;
 import java.net.MalformedURLException;
