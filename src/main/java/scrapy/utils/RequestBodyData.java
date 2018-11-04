@@ -2,9 +2,9 @@ package scrapy.utils;
 
 public class RequestBodyData {
     private String url;
-    private Integer picLimit;
+    private int picLimit;
 
-    public RequestBodyData(String url, Integer picLimit) {
+    public RequestBodyData(String url, int picLimit) {
         this.url = url;
         this.picLimit = picLimit;
     }
@@ -17,11 +17,11 @@ public class RequestBodyData {
         this.url = url;
     }
 
-    public Integer getPicLimit() {
+    public int getPicLimit() {
         return this.picLimit;
     }
 
-    public void setPicLimit(Integer picLimit) {
+    public void setPicLimit(int picLimit) {
         this.picLimit = picLimit;
     }
 }

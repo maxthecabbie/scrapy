@@ -18,6 +18,7 @@ public class YelpScraper implements Callable<YelpRequestResult> {
     private static final String ROOT_NAVBAR_SELECTOR = "div.media-header_root-navbar";
     private static final String TAB_LINK_SELECTOR = "a.tab-link.js-tab-link";
     private static final String TAB_LINK_COUNT_SELECTOR = "span.tab-link_count";
+    private static final int JSOUP_CONNECT_TIMEOUT = 5000;
 
     public YelpScraper(String yelpURL) {
         this.yelpURL = yelpURL;
@@ -30,9 +31,12 @@ public class YelpScraper implements Callable<YelpRequestResult> {
     }
 
     public YelpRequestResult scrapeYelp() {
+        YelpRequestResult requestResult = new YelpRequestResult();
+
         try {
-            YelpRequestResult requestResult = new YelpRequestResult();
-            Document doc = Jsoup.connect(yelpURL).get();
+            Document doc = Jsoup.connect(yelpURL)
+                    .timeout(JSOUP_CONNECT_TIMEOUT)
+                    .get();
 
             if (initialRequest) {
                 HashMap<String, Integer> imageGalleryData = getImageGalleryData(doc);
@@ -41,11 +45,10 @@ public class YelpScraper implements Callable<YelpRequestResult> {
 
             ArrayList<String> imgLinks = getImgLinks(doc);
             requestResult.setImgLinks(imgLinks);
-
-            return requestResult;
-        } catch (IOException e) {
-            return null;
+        } catch (Exception e) {
         }
+
+        return requestResult;
     }
 
     private ArrayList<String> getImgLinks(Document doc) {
@@ -61,8 +64,16 @@ public class YelpScraper implements Callable<YelpRequestResult> {
         HashMap<String, Integer> imagesDataResult = new HashMap<>();
         int numAllImages = 0;
         int numFoodImages = 0;
-        Element rootNavbar = doc.select(ROOT_NAVBAR_SELECTOR).get(0);
-        Elements tabItems = rootNavbar.select(TAB_LINK_SELECTOR);
+        Elements rootNavbar = doc.select(ROOT_NAVBAR_SELECTOR);
+        Elements tabItems = new Elements();
+
+        for (Element rootNavEle : rootNavbar) {
+            Elements tabLinkEle = rootNavEle.select(TAB_LINK_SELECTOR);
+            if (tabLinkEle.size() > 0) {
+                tabItems = tabLinkEle;
+                break;
+            }
+        }
 
         for (Element tabItem : tabItems) {
             if (tabItem.select("span:contains(All)").size() > 0) {
@@ -82,12 +93,6 @@ public class YelpScraper implements Callable<YelpRequestResult> {
 
     @Override
     public YelpRequestResult call() {
-        try {
-            YelpRequestResult yelpScrapeResult = scrapeYelp();
-            return yelpScrapeResult;
-        } catch (Exception e){
-            return null;
-        }
-
+        return scrapeYelp();
     }
 }
