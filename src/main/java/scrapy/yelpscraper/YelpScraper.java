@@ -5,50 +5,48 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.IOException;
 import java.util.concurrent.Callable;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class YelpScraper implements Callable<YelpRequestResult> {
+public class YelpScraper implements Callable<ArrayList<String>> {
     private String yelpURL;
-    private boolean initialRequest;
+    private YelpRequestResult yelpResult;
+    private int requestNumber;
+
     private static final String IMG_SRC_SELECTOR = "div.media-landing_gallery ul li img[src]";
     private static final String ROOT_NAVBAR_SELECTOR = "div.media-header_root-navbar";
     private static final String TAB_LINK_SELECTOR = "a.tab-link.js-tab-link";
     private static final String TAB_LINK_COUNT_SELECTOR = "span.tab-link_count";
     private static final int JSOUP_CONNECT_TIMEOUT = 5000;
 
-    public YelpScraper(String yelpURL) {
+    public YelpScraper(String yelpURL, YelpRequestResult yelpResult) {
         this.yelpURL = yelpURL;
-        this.initialRequest = false;
+        this.yelpResult = yelpResult;
+        this.requestNumber = 0;
     }
 
-    public YelpScraper(String yelpURL, boolean initialRequest) {
-        this.yelpURL = yelpURL;
-        this.initialRequest = initialRequest;
-    }
-
-    public YelpRequestResult scrapeYelp() {
-        YelpRequestResult requestResult = new YelpRequestResult();
+    public ArrayList<String> scrapeYelp(boolean initialScrape) {
+        ArrayList<String> imgLinks = new ArrayList<>();
 
         try {
             Document doc = Jsoup.connect(yelpURL)
                     .timeout(JSOUP_CONNECT_TIMEOUT)
                     .get();
 
-            if (initialRequest) {
-                HashMap<String, Integer> imageGalleryData = getImageGalleryData(doc);
-                requestResult.setImageGalleryData(imageGalleryData);
+            if (initialScrape) {
+                yelpResult.setImageGalleryData(getImageGalleryData(doc));
             }
-
-            ArrayList<String> imgLinks = getImgLinks(doc);
-            requestResult.setImgLinks(imgLinks);
+            imgLinks = getImgLinks(doc);
         } catch (Exception e) {
+            String error = "Request number " + requestNumber + ": " + e.getClass().getCanonicalName() +
+                    " - " + e.getMessage();
+            yelpResult.addError(error);
+        } finally {
+            requestNumber++;
         }
 
-        return requestResult;
+        return imgLinks;
     }
 
     private ArrayList<String> getImgLinks(Document doc) {
@@ -92,7 +90,7 @@ public class YelpScraper implements Callable<YelpRequestResult> {
     }
 
     @Override
-    public YelpRequestResult call() {
-        return scrapeYelp();
+    public ArrayList<String> call() {
+        return scrapeYelp(false);
     }
 }
