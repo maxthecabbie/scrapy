@@ -13,15 +13,7 @@ public class RequestBodyData {
         return this.url;
     }
 
-    public void setUrl(String url) {
-        this.url = url;
-    }
-
     public int getPicLimit() {
         return this.picLimit;
-    }
-
-    public void setPicLimit(int picLimit) {
-        this.picLimit = picLimit;
     }
 }

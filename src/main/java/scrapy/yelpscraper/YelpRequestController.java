@@ -1,114 +1,120 @@
 package scrapy.yelpscraper;
 
-import scrapy.utils.RequestBodyData;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import java.net.URL;
 import java.net.MalformedURLException;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-
+import java.net.URL;
 import java.util.HashMap;
 import java.util.ArrayList;
-import java.lang.String;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
 
 public class YelpRequestController {
-    private String yelpURL;
+    private static final int INITIAL_START_NUM = 0;
+    private static final int NUM_IMGS_PER_PAGE = 30;
+    private static final String REQUEST_PROTOCOL = "https";
+    private static final String YELP_HOST = "www.yelp.com";
+    private static final int EXPECTED_PATH_LENGTH = 2;
+
+    private ExecutorCompletionService ecs;
+    private YelpResult yelpResult;
+    private String yelpUrl;
     private Integer picLimit;
 
-    private final int NUM_IMAGES_IN_GALLERY = 30;
-    private final String REQUEST_PROTOCOL = "https";
-    private final String YELP_HOST = "www.yelp.com";
-    private final int EXPECTED_PATH_LENGTH = 2;
-    private final int THREAD_COUNT = 10;
+    @Autowired
+    private Scraper scraper;
 
-    public YelpRequestController(RequestBodyData reqData) {
-        this.yelpURL = reqData.getUrl();
-        this.picLimit = reqData.getPicLimit();
+    public YelpRequestController(ExecutorCompletionService ecs, YelpResult yelpResult) {
+        this.ecs = ecs;
+        this.yelpResult = yelpResult;
     }
 
-    private String formatURL(String url, YelpRequestResult yelpResult) {
+    public void setYelpUrl(String yelpUrl) {
+        this.yelpUrl = yelpUrl;
+    }
+
+    public void setPicLimit(int picLimit) {
+        this.picLimit = picLimit;
+    }
+
+    private String formatUrl(String yelpUrl) {
         try {
-            URL yelpPageURL = new URL(url);
-            String[] path = yelpPageURL.getPath().replaceFirst("^/", "").split("/");
-            if (path.length != EXPECTED_PATH_LENGTH) {
-                throw new MalformedURLException("Unexpected path length");
+            URL yelpPageUrl = new URL(yelpUrl);
+            String protocol = yelpPageUrl.getProtocol();
+            String host = yelpPageUrl.getHost();
+            String[] path = yelpPageUrl.getPath().replaceFirst("^/", "").split("/");
+
+            if (!protocol.equals(REQUEST_PROTOCOL) || !host.equals(YELP_HOST) || path.length != EXPECTED_PATH_LENGTH) {
+                throw new MalformedURLException("Invalid URL provided");
             }
+
             String venueID = path[1];
             String formattedPath = "/biz_photos/" + venueID;
-            return REQUEST_PROTOCOL + "://" + YELP_HOST + formattedPath + "?tab=food";
+            return protocol + "://" + host + formattedPath + "?tab=food";
         }
         catch (Exception e) {
-            String error = "Input URL error: " + e.getClass().getCanonicalName() +
-                    " - " + e.getMessage();
+            String error = "Input Url error: " +
+                    e.getClass().getCanonicalName() + " - " + e.getMessage();
             yelpResult.addError(error);
-            return null;
         }
+        return null;
     }
 
-    private int calculateNumRequests(HashMap<String, Integer> imageGalleryData) {
-        int numAllImages = imageGalleryData.getOrDefault("numAllImages", 0);
-        int numFoodImages = imageGalleryData.getOrDefault("numFoodImages", 0);
-        int numRemainingImages = Math.min(numFoodImages - NUM_IMAGES_IN_GALLERY, picLimit - NUM_IMAGES_IN_GALLERY);
-        if (numAllImages <= 0 || numFoodImages <= 0 || numRemainingImages <= 0) {
+    private int calculateAdditionalRequests(HashMap<String, Integer> imgGalleryData) {
+        int numAllImgs = imgGalleryData.getOrDefault("numAllImgs", 0);
+        int numFoodImgs = imgGalleryData.getOrDefault("numFoodImgs", 0);
+        int numRemainingImgs = Math.min(numFoodImgs - NUM_IMGS_PER_PAGE, picLimit - NUM_IMGS_PER_PAGE);
+        if (numAllImgs <= 0 || numFoodImgs <= 0 || numRemainingImgs <= 0) {
             return 0;
         }
-        int numRequests = (int) Math.ceil((double) numRemainingImages/NUM_IMAGES_IN_GALLERY);
+        int numRequests = (int) Math.ceil((double) numRemainingImgs/ NUM_IMGS_PER_PAGE);
         return numRequests;
     }
 
-    private String addGalleryStartParam(int requestNumber, String formattedURL) {
-        int startNumber = requestNumber * NUM_IMAGES_IN_GALLERY;
-        return formattedURL + "&start=" + Integer.toString(startNumber);
+    private ConcurrentLinkedQueue<String> genYelpUrls(String formattedUrl, int numRequests) {
+        ConcurrentLinkedQueue<String> yelpUrls = new ConcurrentLinkedQueue<>();
+        int initialStartNum = 1;
+        for (int i = 0; i < numRequests; i++) {
+            int startNum = (initialStartNum + i) * 30;
+            yelpUrls.add(formattedUrl + "&start=" + startNum);
+        }
+        return yelpUrls;
     }
 
-    public YelpRequestResult makeYelpRequest() {
-        YelpRequestResult yelpResult = new YelpRequestResult();
-        String formattedURL = formatURL(yelpURL, yelpResult);
+    public HashMap<String, ArrayList<String>> fetchImgLinks() {
+        scraper.setYelpResult(yelpResult);
+        String formattedUrl = formatUrl(yelpUrl);
 
-        if (formattedURL != null) {
-            YelpScraper initialScraper = new YelpScraper(formattedURL, yelpResult);
-            ArrayList<String> initialScrape = initialScraper.scrapeYelp(true);
-            yelpResult.addImgLinks(initialScrape);
-            int numRequests = calculateNumRequests(yelpResult.getImageGalleryData());
+        if (formattedUrl != null) {
+            ScrapeResult initialScrape = scraper.scrapeYelp(INITIAL_START_NUM, formattedUrl);
+            yelpResult.addScrapeResult(initialScrape);
+            int additionalRequests = calculateAdditionalRequests(yelpResult.getImgGalleryData());
+            scraper.setTaskList(genYelpUrls(formattedUrl, additionalRequests));
 
-            ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
-            ArrayList<Future<ArrayList<String>>> threadList = new ArrayList<>();
-
-            for (int i = 0; i < numRequests; i++) {
-                String formattedURLWithStartParam = addGalleryStartParam(i + 1, formattedURL);
-                Callable<ArrayList<String>> callable = new YelpScraper(formattedURLWithStartParam, yelpResult);
-                Future<ArrayList<String>> yelpScrapeFuture = executor.submit(callable);
-                threadList.add(yelpScrapeFuture);
-            }
-
-            int i = 0;
-            for (Future<ArrayList<String>> future : threadList) {
-                try {
-                    ArrayList<String> futureResult = future.get();
-                    yelpResult.addImgLinks(futureResult);
-                } catch (InterruptedException | ExecutionException e) {
-                    String error = "Thread " + i + ": " + e.getClass().getCanonicalName() +
-                            " - " + e.getMessage();
-                    yelpResult.addError(error);
-                } finally {
-                    i++;
-                }
+            for (int i = 0; i < additionalRequests; i++) {
+                Callable<Scraper> task = scraper;
+                ecs.submit(task);
             }
 
             try {
-                executor.shutdown();
-                executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-            } catch (InterruptedException e) {
-                String error = "Executor shutdown: " + e.getClass().getCanonicalName() +
-                        " - " + e.getMessage();
+                for (int j = 0; j < additionalRequests; j++) {
+                    ScrapeResult scrapeRes = (ScrapeResult) ecs.take().get();
+                    if (scrapeRes != null) {
+                        yelpResult.addScrapeResult(scrapeRes);
+                    } else {
+                        String error = "Thread error: A thread failed to fetch images " +
+                                "of a page in the photo gallery for the restaurant";
+                        yelpResult.addError(error);
+                    }
+                }
+            } catch (InterruptedException | ExecutionException e) {
+                String error = "Thread error: " + e.getClass().getCanonicalName() + " - " + e.getMessage();
                 yelpResult.addError(error);
             }
         }
 
-        return yelpResult;
+        return yelpResult.prepareResult();
     }
 }
