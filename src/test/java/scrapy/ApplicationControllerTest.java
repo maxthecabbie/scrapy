@@ -36,7 +36,6 @@ import java.util.HashMap;
 @AutoConfigureMockMvc
 public class ApplicationControllerTest {
     private Gson gson = new Gson();
-    private YelpResult yelpResult;
     private String jwt, badJwt;
 
     @Autowired
@@ -46,10 +45,13 @@ public class ApplicationControllerTest {
     private Environment env;
 
     @Mock
-    private YelpRequestController yelpReqControllerMock;
+    private Environment envMock;
 
     @Mock
-    private Environment envMock;
+    private YelpResult yelpresult;
+
+    @Mock
+    private YelpRequestController yelpReqControllerMock;
 
     @InjectMocks
     private ApplicationController reqController;
@@ -61,7 +63,6 @@ public class ApplicationControllerTest {
         Algorithm algorithm = Algorithm.HMAC256(env.getProperty("jwt.secret"));
         jwt = JWT.create().sign(algorithm);
         badJwt = jwt + "bad";
-        yelpResult = new YelpResult();
     }
 
     @Test

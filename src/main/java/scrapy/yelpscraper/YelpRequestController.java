@@ -1,6 +1,7 @@
 package scrapy.yelpscraper;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -11,6 +12,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 
+@Service
 public class YelpRequestController {
     private static final int INITIAL_START_NUM = 0;
     private static final int NUM_IMGS_PER_PAGE = 30;
@@ -88,8 +90,8 @@ public class YelpRequestController {
         String formattedUrl = formatUrl(yelpUrl);
 
         if (formattedUrl != null) {
-            ScrapeResult initialScrape = scraper.scrapeYelp(INITIAL_START_NUM, formattedUrl);
-            yelpResult.addScrapeResult(initialScrape);
+            PaginatedScrapeResult initialScrape = scraper.scrapeYelp(INITIAL_START_NUM, formattedUrl);
+            yelpResult.addPageScrapeResult(initialScrape);
             int additionalRequests = calculateAdditionalRequests(yelpResult.getImgGalleryData());
             scraper.setTaskList(genYelpUrls(formattedUrl, additionalRequests));
 
@@ -100,9 +102,9 @@ public class YelpRequestController {
 
             try {
                 for (int j = 0; j < additionalRequests; j++) {
-                    ScrapeResult scrapeRes = (ScrapeResult) ecs.take().get();
-                    if (scrapeRes != null) {
-                        yelpResult.addScrapeResult(scrapeRes);
+                    PaginatedScrapeResult pageScrapeRes = (PaginatedScrapeResult) ecs.take().get();
+                    if (pageScrapeRes != null) {
+                        yelpResult.addPageScrapeResult(pageScrapeRes);
                     } else {
                         String error = "Thread error: A thread failed to fetch images " +
                                 "of a page in the photo gallery for the restaurant";

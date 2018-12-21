@@ -32,7 +32,7 @@ public class Scraper implements Callable {
         this.yelpResult = yelpResult;
     }
 
-    public ScrapeResult scrapeYelp(int startNum, String yelpUrl) {
+    public PaginatedScrapeResult scrapeYelp(int startNum, String yelpUrl) {
         Document doc = null;
         ArrayList<String> linksFromScrape = new ArrayList<>();
         ArrayList<String> errors = new ArrayList<>();
@@ -49,7 +49,7 @@ public class Scraper implements Callable {
             errors.add(error);
         }
 
-        ScrapeResult result = new ScrapeResult(startNum, linksFromScrape, errors);
+        PaginatedScrapeResult result = new PaginatedScrapeResult(startNum, linksFromScrape, errors);
         if (startNum == INITIAL_START_NUM && doc != null) {
             result.setImgGalleryData(getImgGalleryData(doc));
         }
@@ -107,7 +107,7 @@ public class Scraper implements Callable {
     }
 
     @Override
-    public ScrapeResult call() {
+    public PaginatedScrapeResult call() {
         if (taskList.size() > 0) {
             String yelpUrl = taskList.remove();
             int startNum = getStartNum(yelpUrl);

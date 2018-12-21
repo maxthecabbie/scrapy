@@ -53,11 +53,11 @@ public class YelpResult {
         errors.addAll(errorList);
     }
 
-    public void addScrapeResult(ScrapeResult scrapeRes) {
-        int startNum = scrapeRes.getStartNum();
-        ArrayList<String> imgLinks = scrapeRes.getImgLinks();
-        ArrayList<String> errors = scrapeRes.getErrors();
-        HashMap<String, Integer> imgGalleryData = scrapeRes.getImgGalleryData();
+    public void addPageScrapeResult(PaginatedScrapeResult pageScrapeRes) {
+        int startNum = pageScrapeRes.getStartNum();
+        ArrayList<String> imgLinks = pageScrapeRes.getImgLinks();
+        ArrayList<String> errors = pageScrapeRes.getErrors();
+        HashMap<String, Integer> imgGalleryData = pageScrapeRes.getImgGalleryData();
 
         addImgLinks(startNum, imgLinks);
         if (errors.size() > 0) {

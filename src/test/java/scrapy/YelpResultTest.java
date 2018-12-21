@@ -1,6 +1,6 @@
 package scrapy;
 
-import scrapy.yelpscraper.ScrapeResult;
+import scrapy.yelpscraper.PaginatedScrapeResult;
 import scrapy.utils.TestUtils;
 import scrapy.yelpscraper.YelpResult;
 
@@ -88,7 +88,7 @@ public class YelpResultTest {
     }
 
     @Test
-    public void testAddScrapeResult() {
+    public void testAddPageScrapeResult() {
         int startNum = 0;
         int numAllImgsVal = 1000;
         int numFoodImgsVal = 600;
@@ -102,10 +102,10 @@ public class YelpResultTest {
         ArrayList<String> errors = new ArrayList<>();
         errors.add("Error message 1");
 
-        ScrapeResult scrapeRes = new ScrapeResult(startNum, imgLinks, errors);
-        scrapeRes.setImgGalleryData(galleryData);
+        PaginatedScrapeResult pageScrapeRes = new PaginatedScrapeResult(startNum, imgLinks, errors);
+        pageScrapeRes.setImgGalleryData(galleryData);
 
-        yelpResult.addScrapeResult(scrapeRes);
+        yelpResult.addPageScrapeResult(pageScrapeRes);
 
         int expectedNumAllImgsVal = 1000;
         int expectedNumFoodImgsVal = 600;
@@ -126,14 +126,14 @@ public class YelpResultTest {
     }
 
     @Test
-    public void testAddScrapeResultWithOnlyImgLinks() {
+    public void testAddPageScrapeResultWithOnlyImgLinks() {
         int startNum = 0;
 
         ArrayList<String> imgLinks = TestUtils.genImgLinks(startNum, NUM_IMGS_PER_PAGE);
         ArrayList<String> errors = new ArrayList<>();
 
-        ScrapeResult scrapeRes = new ScrapeResult(startNum, imgLinks, errors);
-        yelpResult.addScrapeResult(scrapeRes);
+        PaginatedScrapeResult pageScrapeRes = new PaginatedScrapeResult(startNum, imgLinks, errors);
+        yelpResult.addPageScrapeResult(pageScrapeRes);
 
         int expectedGalleryDataSize = 0;
         assert(yelpResult.getImgGalleryData().size() == expectedGalleryDataSize);

@@ -1,5 +1,7 @@
 package scrapy;
 
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Configuration;
 import scrapy.yelpscraper.YelpRequestController;
 import scrapy.yelpscraper.YelpResult;
 import scrapy.utils.RequestBodyData;
@@ -16,8 +18,6 @@ import org.springframework.http.HttpStatus;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.concurrent.ExecutorCompletionService;
-import java.util.concurrent.Executors;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -29,22 +29,14 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 
 @RestController
 public class ApplicationController {
-    private static final int THREAD_COUNT = 10;
-
     @Autowired
     private Environment env;
 
     @Autowired
-    private YelpRequestController yelpController;
+    private YelpResult yelpResult;
 
     @Autowired
-    private YelpResult yelpResult;
-    
-    @Bean
-    public YelpRequestController yelpController() {
-        ExecutorCompletionService ecs = new ExecutorCompletionService(Executors.newFixedThreadPool(THREAD_COUNT));
-        return new YelpRequestController(ecs, yelpResult);
-    }
+    private YelpRequestController yelpController;
 
     @PostMapping(value = "/")
     public ResponseEntity<String> index(

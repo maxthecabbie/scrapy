@@ -6,7 +6,7 @@ import scrapy.utils.TestUtils;
 import scrapy.yelpscraper.YelpRequestController;
 import scrapy.yelpscraper.YelpResult;
 import scrapy.yelpscraper.Scraper;
-import scrapy.yelpscraper.ScrapeResult;
+import scrapy.yelpscraper.PaginatedScrapeResult;
 
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -61,8 +61,8 @@ public class YelpRequestControllerTest {
 
         ArrayList<String> mockImgLinks = TestUtils.genImgLinks(initStartNum, NUM_IMGS_PER_PAGE);
         ArrayList<String> mockErrors = new ArrayList<>();
-        ScrapeResult scrapeRes = new ScrapeResult(initStartNum, mockImgLinks, mockErrors);
-        scrapeRes.setImgGalleryData(mockImgGalleryData);
+        PaginatedScrapeResult pageScrapeRes = new PaginatedScrapeResult(initStartNum, mockImgLinks, mockErrors);
+        pageScrapeRes.setImgGalleryData(mockImgGalleryData);
 
         setupScrapeYelpMockFunc(numAllImgs, numFoodImgs);
 
@@ -147,24 +147,24 @@ public class YelpRequestControllerTest {
     }
 
     public void setupScrapeYelpMockFunc(int numAllImgs, int numFoodImgs) throws Exception {
-        Mockito.doAnswer(new Answer<ScrapeResult>() {
+        Mockito.doAnswer(new Answer<PaginatedScrapeResult>() {
             @Override
-            public ScrapeResult answer(InvocationOnMock invocation) {
+            public PaginatedScrapeResult answer(InvocationOnMock invocation) {
                 Object[] args = invocation.getArguments();
                 int startNum = (int) args[0];
 
                 ArrayList<String> mockImgLinks = TestUtils.genImgLinks(startNum, NUM_IMGS_PER_PAGE);
                 ArrayList<String> mockErrors = new ArrayList<>();
-                ScrapeResult scrapeRes = new ScrapeResult(startNum, mockImgLinks, mockErrors);
+                PaginatedScrapeResult pageScrapeRes = new PaginatedScrapeResult(startNum, mockImgLinks, mockErrors);
 
                 if (startNum == INITIAL_START_NUM) {
                     HashMap<String, Integer> mockImgGalleryData = new HashMap<>();
                     mockImgGalleryData.put("numAllImgs", numAllImgs);
                     mockImgGalleryData.put("numFoodImgs", numFoodImgs);
 
-                    scrapeRes.setImgGalleryData(mockImgGalleryData);
+                    pageScrapeRes.setImgGalleryData(mockImgGalleryData);
                 }
-                return scrapeRes;
+                return pageScrapeRes;
             }
         }).when(mockYelpScraper).scrapeYelp(any(Integer.class), any(String.class));
     }

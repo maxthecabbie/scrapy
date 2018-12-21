@@ -3,13 +3,13 @@ package scrapy.yelpscraper;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class ScrapeResult {
+public class PaginatedScrapeResult {
     private int startNum;
     private ArrayList<String> imgLinks;
     private ArrayList<String> errors;
     private HashMap<String, Integer> imgGalleryData;
 
-    public ScrapeResult(int startNum, ArrayList<String> imgLinks, ArrayList<String> errors) {
+    public PaginatedScrapeResult(int startNum, ArrayList<String> imgLinks, ArrayList<String> errors) {
         this.startNum = startNum;
         this.imgLinks = imgLinks;
         this.errors = errors;
