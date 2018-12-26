@@ -1,6 +1,6 @@
 package scrapy;
 
-import scrapy.yelpscraper.YelpRequestController;
+import scrapy.yelpscraper.YelpScraperController;
 import scrapy.yelpscraper.YelpResult;
 import scrapy.utils.TestUtils;
 
@@ -35,6 +35,7 @@ import java.util.HashMap;
 @SpringBootTest
 @AutoConfigureMockMvc
 public class ApplicationControllerTest {
+    private static final int NUM_IMGS_PER_PAGE = 30;
     private Gson gson = new Gson();
     private String jwt, badJwt;
 
@@ -51,7 +52,7 @@ public class ApplicationControllerTest {
     private YelpResult yelpresult;
 
     @Mock
-    private YelpRequestController yelpReqControllerMock;
+    private YelpScraperController yelpReqControllerMock;
 
     @InjectMocks
     private ApplicationController reqController;
@@ -67,16 +68,16 @@ public class ApplicationControllerTest {
 
     @Test
     public void testPostReqWithValidJsonBody() throws Exception {
-        int numLinks = 300;
-        HashMap<String, ArrayList<String>> mockRes = new HashMap<>();
-        ArrayList<String> mockImgLinks = TestUtils.genImgLinks(0, numLinks);
-        mockRes.put("imgLinks", mockImgLinks);
+        int startNum = 0;
+        int numFoodImgs = 30;
+        ArrayList<String> errors = new ArrayList<>();
 
-        mockRes.put("errors", new ArrayList<>());
+        String mockJsonResult = TestUtils.genJsonResponse(startNum, numFoodImgs, errors);
+        when(yelpReqControllerMock.fetchImgLinks(any(YelpResult.class))).thenReturn(mockJsonResult);
 
-        when(yelpReqControllerMock.fetchImgLinks()).thenReturn(mockRes);
-
-        String validJson = "{\"yelpUrl\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", \"picLimit\": 300 }";
+        String validJson = "{\"yelpUrl\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", " +
+                "\"picLimit\": 30," +
+                "\"type\": \"initialRequest\"}";
         MvcResult res = mvc.perform(MockMvcRequestBuilders.post("/")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -84,32 +85,32 @@ public class ApplicationControllerTest {
                 .content(validJson))
                 .andReturn();
 
-        HashMap<String, ArrayList<String>> resData = gson.fromJson(res.getResponse().getContentAsString(), HashMap.class);
-        ArrayList<String> resImgLinks = resData.get("imgLinks");
-        ArrayList<String> resErrors = resData.get("errors");
+        HashMap<String, ArrayList<String>> resp = gson.fromJson(res.getResponse().getContentAsString(), HashMap.class);
+        ArrayList<String> respImgLinks = resp.get("imgLinks");
+        ArrayList<String> respErrors = resp.get("errors");
 
+        ArrayList<String> expectedImgLinks = TestUtils.genImgLinks(startNum);
         assert(res.getResponse().getStatus() == HttpStatus.OK.value());
-        assert(resImgLinks.size() == numLinks);
-        for (int i = 0; i < numLinks; i++) {
-            assert(resImgLinks.get(i).equals(mockImgLinks.get(i)));
+        assert(respImgLinks.size() == numFoodImgs);
+        for (int i = 0; i < numFoodImgs; i++) {
+            assert(respImgLinks.get(i).equals(expectedImgLinks.get(i)));
         }
-        assert(resErrors.size() == 0);
+        assert(respErrors.size() == 0);
     }
 
     @Test
     public void testPostReqCompletedWithErrors() throws Exception {
-        int numLinks = 300;
-        HashMap<String, ArrayList<String>> mockRes = new HashMap<>();
-        ArrayList<String> mockImgLinks = TestUtils.genImgLinks(0, numLinks);
-        mockRes.put("imgLinks", mockImgLinks);
-
+        int startNum = 30;
+        int numFoodImgs = 300;
         ArrayList<String> errors = new ArrayList<>();
-        errors.add("Error type: ErrorClassName - Error message");
-        mockRes.put("errors", errors);
+        errors.add("Error message 1");
 
-        when(yelpReqControllerMock.fetchImgLinks()).thenReturn(mockRes);
+        String mockJsonResult = TestUtils.genJsonResponse(startNum, numFoodImgs, errors);
+        when(yelpReqControllerMock.fetchImgLinks(any(YelpResult.class))).thenReturn(mockJsonResult);
 
-        String validJson = "{\"yelpUrl\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", \"picLimit\": 300 }";
+        String validJson = "{\"yelpUrl\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", " +
+                "\"picLimit\": 300," +
+                "\"type\": \"additionalRequest\"}";
         MvcResult res = mvc.perform(MockMvcRequestBuilders.post("/")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -117,30 +118,37 @@ public class ApplicationControllerTest {
                 .content(validJson))
                 .andReturn();
 
-        HashMap<String, ArrayList<String>> resData = gson.fromJson(res.getResponse().getContentAsString(), HashMap.class);
-        ArrayList<String> resImgLinks = resData.get("imgLinks");
-        ArrayList<String> resErrors = resData.get("errors");
+        HashMap<String, ArrayList<String>> resp = gson.fromJson(res.getResponse().getContentAsString(), HashMap.class);
+        ArrayList<String> respImgLinks = resp.get("imgLinks");
+        ArrayList<String> respErrors = resp.get("errors");
 
-        assert(res.getResponse().getStatus() == HttpStatus.OK.value());
-        assert(resImgLinks.size() == numLinks);
-        for (int i = 0; i < numLinks; i++) {
-            assert(resImgLinks.get(i).equals(mockImgLinks.get(i)));
+        ArrayList<String> expectedImgLinks = new ArrayList<>();
+        for (int i = 0; i < numFoodImgs; i += NUM_IMGS_PER_PAGE) {
+            expectedImgLinks.addAll(TestUtils.genImgLinks(startNum + i));
         }
-        assert(resErrors.size() == 1);
+        assert(res.getResponse().getStatus() == HttpStatus.OK.value());
+        assert(respImgLinks.size() == numFoodImgs);
+        for (int i = 0; i < numFoodImgs; i++) {
+            assert(respImgLinks.get(i).equals(expectedImgLinks.get(i)));
+        }
+        int expectedErrorNum = 1;
+        assert(respErrors.size() == expectedErrorNum);
     }
 
     @Test
     public void testPostReqNotCompletedWithErrors() throws Exception {
-        HashMap<String, ArrayList<String>> mockRes = new HashMap<>();
-        mockRes.put("imgLinks", new ArrayList<>());
-
         ArrayList<String> errors = new ArrayList<>();
-        errors.add("Error type: ErrorClassName - Error message");
-        mockRes.put("errors", errors);
+        String errMsg1 = "\"Error message 1\"";
+        String errMsg2 = "\"Error message 2\"";
+        errors.add(errMsg1);
+        errors.add(errMsg2);
 
-        when(yelpReqControllerMock.fetchImgLinks()).thenReturn(mockRes);
-
-        String validJson = "{\"yelpUrl\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", \"picLimit\": 300 }";
+        String mockJsonResult = String.format("{\"imgLinks\":[],\"errors\":[%s, %s]}", errMsg1, errMsg2);
+        when(yelpReqControllerMock.fetchImgLinks(any(YelpResult.class))).thenReturn(mockJsonResult);
+        when(yelpresult.getErrors()).thenReturn(errors);
+        String validJson = "{\"yelpUrl\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", " +
+                "\"picLimit\": 300," +
+                "\"type\": \"additionalRequest\"}";
         MvcResult res = mvc.perform(MockMvcRequestBuilders.post("/")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -148,25 +156,19 @@ public class ApplicationControllerTest {
                 .content(validJson))
                 .andReturn();
 
-        HashMap<String, ArrayList<String>> resData = gson.fromJson(res.getResponse().getContentAsString(), HashMap.class);
-        ArrayList<String> resImgLinks = resData.get("imgLinks");
-        ArrayList<String> resErrors = resData.get("errors");
+        HashMap<String, ArrayList<String>> resp = gson.fromJson(res.getResponse().getContentAsString(), HashMap.class);
+        ArrayList<String> respImgLinks = resp.get("imgLinks");
+        ArrayList<String> respErrors = resp.get("errors");
 
+        int expectedImgLinksSize = 0;
+        int expectedErrorsSize = errors.size();
         assert(res.getResponse().getStatus() == HttpStatus.BAD_REQUEST.value());
-        assert(resImgLinks.size() == 0);
-        assert(resErrors.size() == 1);
+        assert(respImgLinks.size() == expectedImgLinksSize);
+        assert(respErrors.size() == expectedErrorsSize);
     }
 
     @Test
     public void testPostReqWithInvalidJsonBody() throws Exception {
-        int numLinks = 300;
-        HashMap<String, ArrayList<String>> mockRes = new HashMap<>();
-        mockRes.put("imgLinks", TestUtils.genImgLinks(0, numLinks));
-
-        mockRes.put("errors", new ArrayList<>());
-
-        when(yelpReqControllerMock.fetchImgLinks()).thenReturn(mockRes);
-
         String invalidUrlKeyJson = "{\"invalidKey\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", \"picLimit\": 300 }";
         String invalidPicLimitKeyJson = "{\"yelpUrl\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", \"invalidKey\": 300 }";
 

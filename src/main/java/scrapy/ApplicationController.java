@@ -1,12 +1,9 @@
 package scrapy;
 
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Configuration;
-import scrapy.yelpscraper.YelpRequestController;
+import scrapy.yelpscraper.YelpScraperController;
 import scrapy.yelpscraper.YelpResult;
 import scrapy.utils.RequestBodyData;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,9 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
-
-import java.util.ArrayList;
-import java.util.HashMap;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -29,14 +23,17 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 
 @RestController
 public class ApplicationController {
+    private YelpResult yelpResult;
+
     @Autowired
     private Environment env;
 
     @Autowired
-    private YelpResult yelpResult;
+    private YelpScraperController yelpController;
 
-    @Autowired
-    private YelpRequestController yelpController;
+    public ApplicationController() {
+        this.yelpResult = new YelpResult();
+    }
 
     @PostMapping(value = "/")
     public ResponseEntity<String> index(
@@ -54,33 +51,36 @@ public class ApplicationController {
             return new ResponseEntity<>(null, null, HttpStatus.BAD_REQUEST);
         }
 
-        yelpController.setYelpUrl(reqData.getUrl());
-        yelpController.setPicLimit(reqData.getPicLimit());
-        HashMap<String, ArrayList<String>> yelpData = yelpController.fetchImgLinks();
-        return sendResponse(yelpData);
+        yelpController.setReqData(reqData);
+        String responseJSON = yelpController.fetchImgLinks(yelpResult);
+        return sendResponse(responseJSON);
     }
 
     private RequestBodyData parseReqBodyString(String reqBodyString) {
+        final String ADDITIONAL_REQ = "additionalRequest";
+        final int NUM_IMGS_PER_PAGE = 30;
+
         Gson gson = new Gson();
-        String yelpUrl;
-        int picLimit;
+        String yelpUrl, type;
+        int picLimit = NUM_IMGS_PER_PAGE;
+
         try {
             JsonObject reqBodyJsonObj = gson.fromJson(reqBodyString, JsonObject.class);
             yelpUrl = reqBodyJsonObj.get("yelpUrl").getAsString();
-            picLimit = reqBodyJsonObj.get("picLimit").getAsInt();
+            type = reqBodyJsonObj.get("type").getAsString();
+            if (type.equals(ADDITIONAL_REQ)) {
+                picLimit = reqBodyJsonObj.get("picLimit").getAsInt();
+            }
         } catch (Exception e) {
             return null;
         }
-        return new RequestBodyData(yelpUrl, picLimit);
+        return new RequestBodyData(yelpUrl, type, picLimit);
     }
 
-    private ResponseEntity<String> sendResponse(HashMap<String, ArrayList<String>> yelpData) {
-        HttpStatus status = (yelpData.get("errors").size() > 0 && yelpData.get("imgLinks").size() == 0) ?
+    private ResponseEntity<String> sendResponse(String response) {
+        HttpStatus status = (yelpResult.getErrors().size() > 0 && yelpResult.getImgLinks().size() == 0) ?
                 HttpStatus.BAD_REQUEST : HttpStatus.OK;
-        Gson gson = new Gson();
-        String responseJson = gson.toJson(yelpData);
-
         yelpResult.clear();
-        return new ResponseEntity<>(responseJson, null, status);
+        return new ResponseEntity<>(response, null, status);
     }
 }

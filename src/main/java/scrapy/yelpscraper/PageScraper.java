@@ -2,34 +2,27 @@ package scrapy.yelpscraper;
 
 import org.springframework.stereotype.Service;
 
-import java.util.concurrent.Callable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
+import java.util.concurrent.Callable;
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 @Service
-public class Scraper implements Callable {
-    private static final int INITIAL_START_NUM = 0;
+public class PageScraper implements Callable {
+    private static final int ADDITIONAL_REQ_START_NUM = 30;
     private static final int JSOUP_CONNECT_TIMEOUT = 5000;
     private static final String IMG_SRC_SELECTOR = "div.media-landing_gallery ul li img[src]";
     private static final String ROOT_NAVBAR_SELECTOR = "div.media-header_root-navbar";
     private static final String TAB_LINK_SELECTOR = "a.tab-link.js-tab-link";
     private static final String TAB_LINK_COUNT_SELECTOR = "span.tab-link_count";
-
     private ConcurrentLinkedQueue<String> taskList;
-    private YelpResult yelpResult;
 
     public void setTaskList(ConcurrentLinkedQueue<String> taskList) {
         this.taskList = taskList;
-    }
-
-    public void setYelpResult(YelpResult yelpResult) {
-        this.yelpResult = yelpResult;
     }
 
     public PaginatedScrapeResult scrapeYelp(int startNum, String yelpUrl) {
@@ -50,8 +43,8 @@ public class Scraper implements Callable {
         }
 
         PaginatedScrapeResult result = new PaginatedScrapeResult(startNum, linksFromScrape, errors);
-        if (startNum == INITIAL_START_NUM && doc != null) {
-            result.setImgGalleryData(getImgGalleryData(doc));
+        if (startNum == ADDITIONAL_REQ_START_NUM && doc != null) {
+            result.setNumFoodImgs(getNumFoodImgs(doc));
         }
         return result;
     }
@@ -76,9 +69,8 @@ public class Scraper implements Callable {
         return imgLinks;
     }
 
-    private HashMap<String, Integer> getImgGalleryData(Document doc) {
-        HashMap<String, Integer> imagesDataResult = new HashMap<>();
-        int numAllImgs = 0, numFoodImgs = 0;
+    private int getNumFoodImgs(Document doc) {
+        int numFoodImgs = 0;
         Elements rootNavbar = doc.select(ROOT_NAVBAR_SELECTOR);
         Elements tabItems = new Elements();
 
@@ -91,19 +83,13 @@ public class Scraper implements Callable {
         }
 
         for (Element tabItem : tabItems) {
-            if (tabItem.select("span:contains(All)").size() > 0) {
-                String allTitleAttr = tabItem.select(TAB_LINK_COUNT_SELECTOR).text();
-                numAllImgs = Integer.parseInt(allTitleAttr.replaceAll("[()]", ""));
-            }
-            else if (tabItem.select("span:contains(Food)").size() > 0) {
+            if (tabItem.select("span:contains(Food)").size() > 0) {
                 String foodTitleAttr = tabItem.select(TAB_LINK_COUNT_SELECTOR).text();
                 numFoodImgs = Integer.parseInt(foodTitleAttr.replaceAll("[()]", ""));
             }
         }
 
-        imagesDataResult.put("numAllImgs", numAllImgs);
-        imagesDataResult.put("numFoodImgs", numFoodImgs);
-        return imagesDataResult;
+        return numFoodImgs;
     }
 
     @Override

@@ -2,6 +2,8 @@ package scrapy.yelpscraper;
 
 import org.springframework.stereotype.Service;
 
+import com.google.gson.Gson;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -9,36 +11,20 @@ import java.util.TreeMap;
 
 @Service
 public class YelpResult {
-    private HashMap<String, Integer> imgGalleryData;
     private TreeMap<Integer, ArrayList<String>> imgLinks;
     private ArrayList<String> errors;
 
     public YelpResult() {
-        imgGalleryData = new HashMap<>();
         imgLinks = new TreeMap<>();
         errors = new ArrayList<>();
     }
 
-    public HashMap<String, Integer> getImgGalleryData() {
-        return imgGalleryData;
-    }
-
-    public ArrayList<String> getImgLinks() {
-        ArrayList<String> result = new ArrayList<>();
-        for (Map.Entry<Integer, ArrayList<String>> entry : imgLinks.entrySet()) {
-            result.addAll(entry.getValue());
-        }
-        return result;
+    public TreeMap<Integer, ArrayList<String>> getImgLinks() {
+        return imgLinks;
     }
 
     public ArrayList<String> getErrors() {
         return errors;
-    }
-
-    public void setImgGalleryData(HashMap<String, Integer> data) {
-        for (String key : data.keySet()) {
-            imgGalleryData.put(key, data.get(key));
-        }
     }
 
     public void addImgLinks(int key, ArrayList<String> linksFromScrape) {
@@ -49,7 +35,7 @@ public class YelpResult {
         errors.add(error);
     }
 
-    public void addError(ArrayList<String> errorList) {
+    public void addMultipleErrors(ArrayList<String> errorList) {
         errors.addAll(errorList);
     }
 
@@ -57,26 +43,29 @@ public class YelpResult {
         int startNum = pageScrapeRes.getStartNum();
         ArrayList<String> imgLinks = pageScrapeRes.getImgLinks();
         ArrayList<String> errors = pageScrapeRes.getErrors();
-        HashMap<String, Integer> imgGalleryData = pageScrapeRes.getImgGalleryData();
 
         addImgLinks(startNum, imgLinks);
+
         if (errors.size() > 0) {
-            addError(errors);
-        }
-        if (imgGalleryData != null) {
-            setImgGalleryData(imgGalleryData);
+            addMultipleErrors(errors);
         }
     }
 
-    public HashMap<String, ArrayList<String>> prepareResult() {
+    public String prepareJsonResult() {
+        Gson gson = new Gson();
         HashMap<String, ArrayList<String>> result = new HashMap<>();
-        result.put("imgLinks", getImgLinks());
-        result.put("errors", getErrors());
-        return result;
+
+        ArrayList<String> imgLinksArrayList = new ArrayList<>();
+        for (Map.Entry<Integer, ArrayList<String>> entry : imgLinks.entrySet()) {
+            imgLinksArrayList.addAll(entry.getValue());
+        }
+
+        result.put("imgLinks", imgLinksArrayList);
+        result.put("errors", errors);
+        return gson.toJson(result);
     }
 
     public void clear() {
-        imgGalleryData.clear();
         imgLinks.clear();
         errors.clear();
     }

@@ -1,19 +1,17 @@
 package scrapy.yelpscraper;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 public class PaginatedScrapeResult {
     private int startNum;
     private ArrayList<String> imgLinks;
     private ArrayList<String> errors;
-    private HashMap<String, Integer> imgGalleryData;
+    private Integer numFoodImgs;
 
     public PaginatedScrapeResult(int startNum, ArrayList<String> imgLinks, ArrayList<String> errors) {
         this.startNum = startNum;
         this.imgLinks = imgLinks;
         this.errors = errors;
-        this.imgGalleryData = new HashMap<>();
     }
 
     public int getStartNum() {
@@ -28,11 +26,11 @@ public class PaginatedScrapeResult {
         return errors;
     }
 
-    public HashMap<String, Integer> getImgGalleryData() {
-        return imgGalleryData;
+    public int getNumFoodImgs() {
+        return numFoodImgs;
     }
 
-    public void setImgGalleryData(HashMap<String, Integer> imgGalleryData) {
-        this.imgGalleryData = imgGalleryData;
+    public void setNumFoodImgs(int numFoodImgs) {
+        this.numFoodImgs = numFoodImgs;
     }
 }
