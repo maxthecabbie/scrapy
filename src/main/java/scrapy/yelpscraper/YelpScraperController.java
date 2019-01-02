@@ -53,7 +53,7 @@ public class YelpScraperController {
             return protocol + "://" + host + formattedPath + "?tab=food";
         }
         catch (Exception e) {
-            String error = "Input Url error: " +
+            String error = "Input URL error: " +
                     e.getClass().getCanonicalName() + " - " + e.getMessage();
             yelpResult.addError(error);
         }
@@ -115,8 +115,8 @@ public class YelpScraperController {
                 if (pageScrapeRes != null) {
                     yelpResult.addPageScrapeResult(pageScrapeRes);
                 } else {
-                    String error = "Thread error: A thread failed to fetch images " +
-                            "of a page in the photo gallery for the restaurant";
+                    String error = "Result error: Unable to fetch images of a page" +
+                            " in the photo gallery for the restaurant. Result is null";
                     yelpResult.addError(error);
                 }
             }

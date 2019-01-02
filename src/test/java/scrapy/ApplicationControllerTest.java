@@ -46,7 +46,7 @@ public class ApplicationControllerTest {
     private Environment env;
 
     @Mock
-    private Environment envMock;
+    private Environment mockEnv;
 
     @Mock
     private YelpResult yelpresult;
@@ -60,7 +60,7 @@ public class ApplicationControllerTest {
     @Before
     public void setup() {
         mvc = MockMvcBuilders.standaloneSetup(reqController).build();
-        when(envMock.getProperty(any(String.class))).thenReturn(env.getProperty("jwt.secret"));
+        when(mockEnv.getProperty(any(String.class))).thenReturn(env.getProperty("jwt.secret"));
         Algorithm algorithm = Algorithm.HMAC256(env.getProperty("jwt.secret"));
         jwt = JWT.create().sign(algorithm);
         badJwt = jwt + "bad";
@@ -78,19 +78,19 @@ public class ApplicationControllerTest {
         String validJson = "{\"yelpUrl\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", " +
                 "\"picLimit\": 30," +
                 "\"type\": \"initialRequest\"}";
-        MvcResult res = mvc.perform(MockMvcRequestBuilders.post("/")
+        MvcResult req = mvc.perform(MockMvcRequestBuilders.post("/")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", jwt)
                 .content(validJson))
                 .andReturn();
 
-        HashMap<String, ArrayList<String>> resp = gson.fromJson(res.getResponse().getContentAsString(), HashMap.class);
-        ArrayList<String> respImgLinks = resp.get("imgLinks");
-        ArrayList<String> respErrors = resp.get("errors");
+        HashMap<String, ArrayList<String>> res = gson.fromJson(req.getResponse().getContentAsString(), HashMap.class);
+        ArrayList<String> respImgLinks = res.get("imgLinks");
+        ArrayList<String> respErrors = res.get("errors");
 
         ArrayList<String> expectedImgLinks = TestUtils.genImgLinks(startNum);
-        assert(res.getResponse().getStatus() == HttpStatus.OK.value());
+        assert(req.getResponse().getStatus() == HttpStatus.OK.value());
         assert(respImgLinks.size() == numFoodImgs);
         for (int i = 0; i < numFoodImgs; i++) {
             assert(respImgLinks.get(i).equals(expectedImgLinks.get(i)));
@@ -111,22 +111,22 @@ public class ApplicationControllerTest {
         String validJson = "{\"yelpUrl\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", " +
                 "\"picLimit\": 300," +
                 "\"type\": \"additionalRequest\"}";
-        MvcResult res = mvc.perform(MockMvcRequestBuilders.post("/")
+        MvcResult req = mvc.perform(MockMvcRequestBuilders.post("/")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", jwt)
                 .content(validJson))
                 .andReturn();
 
-        HashMap<String, ArrayList<String>> resp = gson.fromJson(res.getResponse().getContentAsString(), HashMap.class);
-        ArrayList<String> respImgLinks = resp.get("imgLinks");
-        ArrayList<String> respErrors = resp.get("errors");
+        HashMap<String, ArrayList<String>> res = gson.fromJson(req.getResponse().getContentAsString(), HashMap.class);
+        ArrayList<String> respImgLinks = res.get("imgLinks");
+        ArrayList<String> respErrors = res.get("errors");
 
         ArrayList<String> expectedImgLinks = new ArrayList<>();
         for (int i = 0; i < numFoodImgs; i += NUM_IMGS_PER_PAGE) {
             expectedImgLinks.addAll(TestUtils.genImgLinks(startNum + i));
         }
-        assert(res.getResponse().getStatus() == HttpStatus.OK.value());
+        assert(req.getResponse().getStatus() == HttpStatus.OK.value());
         assert(respImgLinks.size() == numFoodImgs);
         for (int i = 0; i < numFoodImgs; i++) {
             assert(respImgLinks.get(i).equals(expectedImgLinks.get(i)));
@@ -149,20 +149,20 @@ public class ApplicationControllerTest {
         String validJson = "{\"yelpUrl\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", " +
                 "\"picLimit\": 300," +
                 "\"type\": \"additionalRequest\"}";
-        MvcResult res = mvc.perform(MockMvcRequestBuilders.post("/")
+        MvcResult req = mvc.perform(MockMvcRequestBuilders.post("/")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", jwt)
                 .content(validJson))
                 .andReturn();
 
-        HashMap<String, ArrayList<String>> resp = gson.fromJson(res.getResponse().getContentAsString(), HashMap.class);
-        ArrayList<String> respImgLinks = resp.get("imgLinks");
-        ArrayList<String> respErrors = resp.get("errors");
+        HashMap<String, ArrayList<String>> res = gson.fromJson(req.getResponse().getContentAsString(), HashMap.class);
+        ArrayList<String> respImgLinks = res.get("imgLinks");
+        ArrayList<String> respErrors = res.get("errors");
 
         int expectedImgLinksSize = 0;
         int expectedErrorsSize = errors.size();
-        assert(res.getResponse().getStatus() == HttpStatus.BAD_REQUEST.value());
+        assert(req.getResponse().getStatus() == HttpStatus.BAD_REQUEST.value());
         assert(respImgLinks.size() == expectedImgLinksSize);
         assert(respErrors.size() == expectedErrorsSize);
     }
@@ -172,79 +172,79 @@ public class ApplicationControllerTest {
         String invalidUrlKeyJson = "{\"invalidKey\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", \"picLimit\": 300 }";
         String invalidPicLimitKeyJson = "{\"yelpUrl\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", \"invalidKey\": 300 }";
 
-        MvcResult resInvalidUrlKey = mvc.perform(MockMvcRequestBuilders.post("/")
+        MvcResult invalidUrlKeyReq = mvc.perform(MockMvcRequestBuilders.post("/")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", jwt)
                 .content(invalidUrlKeyJson))
                 .andReturn();
 
-        MvcResult resInvalidPicLimitKey = mvc.perform(MockMvcRequestBuilders.post("/")
+        MvcResult invalidPicLimitKeyReq = mvc.perform(MockMvcRequestBuilders.post("/")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", jwt)
                 .content(invalidPicLimitKeyJson))
                 .andReturn();
 
-        assert(resInvalidUrlKey.getResponse().getStatus() == HttpStatus.BAD_REQUEST.value());
-        assert(resInvalidPicLimitKey.getResponse().getStatus() == HttpStatus.BAD_REQUEST.value());
-        assert(resInvalidUrlKey.getResponse().getContentAsString().equals(""));
-        assert(resInvalidPicLimitKey.getResponse().getContentAsString().equals(""));
+        assert(invalidUrlKeyReq.getResponse().getStatus() == HttpStatus.BAD_REQUEST.value());
+        assert(invalidPicLimitKeyReq.getResponse().getStatus() == HttpStatus.BAD_REQUEST.value());
+        assert(invalidUrlKeyReq.getResponse().getContentAsString().equals(""));
+        assert(invalidPicLimitKeyReq.getResponse().getContentAsString().equals(""));
     }
 
     @Test
     public void testPostReqWithNoJwt() throws Exception {
         String validJson = "{\"invalidKey\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", \"picLimit\": 300 }";
 
-        MvcResult res = mvc.perform(MockMvcRequestBuilders.post("/")
+        MvcResult req = mvc.perform(MockMvcRequestBuilders.post("/")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(validJson))
                 .andReturn();
 
-        assert(res.getResponse().getStatus() == HttpStatus.BAD_REQUEST.value());
-        assert(res.getResponse().getContentAsString().equals(""));
+        assert(req.getResponse().getStatus() == HttpStatus.BAD_REQUEST.value());
+        assert(req.getResponse().getContentAsString().equals(""));
     }
 
     @Test
     public void testPostReqWithInvalidJwt() throws Exception {
         String validJson = "{\"invalidKey\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", \"picLimit\": 300 }";
 
-        MvcResult res = mvc.perform(MockMvcRequestBuilders.post("/")
+        MvcResult req = mvc.perform(MockMvcRequestBuilders.post("/")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", badJwt)
                 .content(validJson))
                 .andReturn();
 
-        assert(res.getResponse().getStatus() == HttpStatus.UNAUTHORIZED.value());
-        assert(res.getResponse().getContentAsString().equals(""));
+        assert(req.getResponse().getStatus() == HttpStatus.UNAUTHORIZED.value());
+        assert(req.getResponse().getContentAsString().equals(""));
     }
 
     @Test
     public void testPostReqWithNoBody() throws Exception {
-        MvcResult res = mvc.perform(MockMvcRequestBuilders.post("/")
+        MvcResult req = mvc.perform(MockMvcRequestBuilders.post("/")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
-                .header("Authorization", badJwt))
+                .header("Authorization", jwt))
                 .andReturn();
 
-        assert(res.getResponse().getStatus() == HttpStatus.BAD_REQUEST.value());
-        assert(res.getResponse().getContentAsString().equals(""));
+        assert(req.getResponse().getStatus() == HttpStatus.BAD_REQUEST.value());
+        assert(req.getResponse().getContentAsString().equals(""));
     }
 
     @Test
     public void testPostReqWithBadPath() throws Exception {
         String validJson = "{\"invalidKey\": \"https://www.yelp.com/biz/am%C3%A9lie-new-york\", \"picLimit\": 300 }";
 
-        MvcResult res = mvc.perform(MockMvcRequestBuilders.post("/non-existent-path")
+        MvcResult req = mvc.perform(MockMvcRequestBuilders.post("/non-existent-path")
                 .accept(MediaType.APPLICATION_JSON)
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("Authorization", jwt)
                 .content(validJson))
                 .andReturn();
 
-        assert(res.getResponse().getStatus() == HttpStatus.NOT_FOUND.value());
-        assert(res.getResponse().getContentAsString().equals(""));
+        assert(req.getResponse().getStatus() == HttpStatus.NOT_FOUND.value());
+        assert(req.getResponse().getContentAsString().equals(""));
     }
 }
